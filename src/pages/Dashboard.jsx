@@ -1,25 +1,32 @@
-
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import events from "../data/events";
 
 function Dashboard() {
   const [registrations, setRegistrations] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Load saved registrations from localStorage
+  // Load registrations from Express backend
   useEffect(() => {
-    try {
-      const savedRegistrations = JSON.parse(
-        localStorage.getItem("registrations") || "[]"
-      );
+    document.title = "Dashboard | EventHub";
 
-      setRegistrations(
-        Array.isArray(savedRegistrations) ? savedRegistrations : []
-      );
-    } catch (error) {
-      console.error("Unable to load registrations:", error);
-      setRegistrations([]);
-    }
+    fetch("http://localhost:5000/api/registrations")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch registrations");
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        setRegistrations(data);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error("Unable to load registrations:", error);
+        setRegistrations([]);
+        setLoading(false);
+      });
   }, []);
 
   // Get unique event categories
@@ -28,7 +35,9 @@ function Dashboard() {
   ];
 
   // Show the five most recent registrations
-  const recentRegistrations = [...registrations].reverse().slice(0, 5);
+  const recentRegistrations = [...registrations]
+    .reverse()
+    .slice(0, 5);
 
   // Count registrations for each category
   const getCategoryCount = (category) => {
@@ -55,74 +64,89 @@ function Dashboard() {
         </Link>
       </div>
 
-      {/* Summary Cards */}
-      <div className="dashboard-stats">
-        <div className="dashboard-stat-card">
-          <span className="dashboard-icon blue">📅</span>
-          <p>Total Events</p>
-          <h2>{events.length}</h2>
-        </div>
-
-        <div className="dashboard-stat-card">
-          <span className="dashboard-icon green">👥</span>
-          <p>Total Registrations</p>
-          <h2>{registrations.length}</h2>
-        </div>
-
-        <div className="dashboard-stat-card">
-          <span className="dashboard-icon orange">🏷️</span>
-          <p>Event Categories</p>
-          <h2>{categories.length}</h2>
-        </div>
-      </div>
-
-      {/* Registrations by Category */}
-      <section className="dashboard-section">
-        <h2>Registrations by Category</h2>
-
-        <div className="dashboard-category-list">
-          {categories.map((category) => (
-            <div className="dashboard-category-row" key={category}>
-              <span>{category}</span>
-              <strong>{getCategoryCount(category)}</strong>
+      {/* Loading */}
+      {loading ? (
+        <p>Loading dashboard...</p>
+      ) : (
+        <>
+          {/* Summary Cards */}
+          <div className="dashboard-stats">
+            <div className="dashboard-stat-card">
+              <span className="dashboard-icon blue">📅</span>
+              <p>Total Events</p>
+              <h2>{events.length}</h2>
             </div>
-          ))}
-        </div>
-      </section>
 
-      {/* Recent Registrations */}
-      <section className="dashboard-section">
-        <h2>Recent Registrations</h2>
+            <div className="dashboard-stat-card">
+              <span className="dashboard-icon green">👥</span>
+              <p>Total Registrations</p>
+              <h2>{registrations.length}</h2>
+            </div>
 
-        {recentRegistrations.length === 0 ? (
-          <div className="dashboard-empty">
-            <p>No registrations yet.</p>
-            <Link to="/events">
-              Browse events to get started →
-            </Link>
+            <div className="dashboard-stat-card">
+              <span className="dashboard-icon orange">🏷️</span>
+              <p>Event Categories</p>
+              <h2>{categories.length}</h2>
+            </div>
           </div>
-        ) : (
-          <div className="dashboard-recent-list">
-            {recentRegistrations.map((registration, index) => (
-              <div
-                className="dashboard-recent-item"
-                key={`${registration.eventId}-${registration.email}-${index}`}
-              >
-                <div>
-                  <h3>{registration.eventTitle}</h3>
-                  <p>
-                    {registration.name} · {registration.department}
-                  </p>
+
+          {/* Registrations by Category */}
+          <section className="dashboard-section">
+            <h2>Registrations by Category</h2>
+
+            <div className="dashboard-category-list">
+              {categories.map((category) => (
+                <div
+                  className="dashboard-category-row"
+                  key={category}
+                >
+                  <span>{category}</span>
+                  <strong>{getCategoryCount(category)}</strong>
                 </div>
+              ))}
+            </div>
+          </section>
 
-                <span className="dashboard-status">
-                  Registered
-                </span>
+          {/* Recent Registrations */}
+          <section className="dashboard-section">
+            <h2>Recent Registrations</h2>
+
+            {recentRegistrations.length === 0 ? (
+              <div className="dashboard-empty">
+                <p>No registrations yet.</p>
+
+                <Link to="/events">
+                  Browse events to get started →
+                </Link>
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+            ) : (
+              <div className="dashboard-recent-list">
+                {recentRegistrations.map(
+                  (registration, index) => (
+                    <div
+                      className="dashboard-recent-item"
+                      key={`${registration.eventId}-${registration.email}-${index}`}
+                    >
+                      <div>
+                        <h3>{registration.eventTitle}</h3>
+
+                        <p>
+                          {registration.name} ·{" "}
+                          {registration.department}
+                        </p>
+                      </div>
+
+                      <span className="dashboard-status">
+                        Registered
+                      </span>
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+          </section>
+        </>
+      )}
     </div>
   );
 }
